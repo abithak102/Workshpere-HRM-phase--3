@@ -1,0 +1,790 @@
+
+import { useEffect, useState } from "react";
+import { apiRequest } from "./api";
+import "./App.css";
+
+const MENU_ITEMS = [
+  "Dashboard",
+  "Employees",
+  "Attendance",
+  "Leave Management",
+  "Payroll",
+  "Notifications",
+];
+
+function getEmployeeName(employee) {
+  return employee.full_name || employee.name || "Unknown Employee";
+}
+
+function getInitials(name) {
+  return String(name)
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0] || "")
+    .join("")
+    .toUpperCase();
+}
+
+function formatDate(value) {
+  if (!value) return "—";
+
+  const date = new Date(`${value}T00:00:00`);
+
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleDateString();
+}
+
+function formatSalary(value) {
+  return Number(value || 0).toLocaleString("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 2,
+  });
+}
+
+export default function App() {
+  const [token, setToken] = useState(() =>
+    sessionStorage.getItem("worksphere_token")
+  );
+
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(Boolean(token));
+  const [authError, setAuthError] = useState("");
+
+  useEffect(() => {
+    if (!token) {
+      setAuthLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadUser() {
+      try {
+        const currentUser = await apiRequest("/auth/me", {}, token);
+
+        if (!cancelled) {
+          setUser(currentUser);
+          setAuthError("");
+        }
+      } catch (error) {
+        if (!cancelled) {
+          sessionStorage.removeItem("worksphere_token");
+          setToken(null);
+          setUser(null);
+          setAuthError("Session expired. Please sign in again.");
+        }
+      } finally {
+        if (!cancelled) setAuthLoading(false);
+      }
+    }
+
+    loadUser();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  function handleLogin(loginData) {
+    setToken(loginData.access_token);
+    setAuthLoading(true);
+    setAuthError("");
+  }
+
+  function handleLogout() {
+    sessionStorage.removeItem("worksphere_token");
+    setToken(null);
+    setUser(null);
+    setAuthError("");
+  }
+
+  if (authLoading) {
+    return (
+      <main className="auth-screen">
+        <div className="auth-card">
+          <h2>WorkSphere HRMS</h2>
+          <p>Loading your account...</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!token || !user) {
+    return (
+      <LoginScreen
+        onLogin={handleLogin}
+        initialError={authError}
+      />
+    );
+  }
+
+  return (
+    <Dashboard
+      token={token}
+      user={user}
+      onLogout={handleLogout}
+    />
+  );
+}
+
+function LoginScreen({ onLogin, initialError }) {
+  const [username, setUsername] = useState("admin");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState(initialError || "");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+
+    try {
+      const form = new URLSearchParams();
+      form.set("username", username);
+      form.set("password", password);
+
+      const response = await fetch(
+        "http://127.0.0.1:8000/auth/login",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: form,
+        }
+      );
+
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(
+          response.status === 401
+            ? "Invalid username or password."
+            : `Login failed (${response.status}): ${message}`
+        );
+      }
+
+      const data = await response.json();
+
+      if (!data.access_token) {
+        throw new Error("The server did not return an access token.");
+      }
+
+      sessionStorage.setItem("worksphere_token", data.access_token);
+      onLogin(data);
+    } catch (err) {
+      setError(err.message || "Unable to sign in.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <main className="auth-screen">
+      <section className="auth-card">
+        <div className="brand-logo">W</div>
+        <p className="eyebrow">WORKSPHERE HR MANAGEMENT</p>
+        <h1>Welcome back</h1>
+        <p>Sign in to manage your workplace.</p>
+
+        <form onSubmit={handleSubmit} className="form-grid">
+          <label>
+            Username
+            <input
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              autoComplete="username"
+              required
+            />
+          </label>
+
+          <label>
+            Password
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="current-password"
+              required
+            />
+          </label>
+
+          {error && <p className="error-message">{error}</p>}
+
+          <button
+            className="primary-button"
+            type="submit"
+            disabled={loading}
+          >
+            {loading ? "Signing in..." : "Sign In"}
+          </button>
+        </form>
+      </section>
+    </main>
+  );
+}
+
+function Dashboard({ token, user, onLogout }) {
+  const [activeMenu, setActiveMenu] = useState("Dashboard");
+  const [employees, setEmployees] = useState([]);
+  const [loadingEmployees, setLoadingEmployees] = useState(true);
+  const [employeeError, setEmployeeError] = useState("");
+  const [search, setSearch] = useState("");
+  const [showAddEmployee, setShowAddEmployee] = useState(false);
+  const [savingEmployee, setSavingEmployee] = useState(false);
+  const [employeeFormError, setEmployeeFormError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+
+  const canManageEmployees = ["ADMIN", "HR"].includes(
+    String(user.role || "").toUpperCase()
+  );
+
+  async function loadEmployees() {
+    setLoadingEmployees(true);
+    setEmployeeError("");
+
+    try {
+      const result = await apiRequest("/employees", {}, token);
+      setEmployees(Array.isArray(result) ? result : []);
+    } catch (error) {
+      setEmployeeError(error.message || "Unable to load employees.");
+    } finally {
+      setLoadingEmployees(false);
+    }
+  }
+
+  useEffect(() => {
+    loadEmployees();
+    // Reload when the authenticated account changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  const filteredEmployees = employees.filter((employee) => {
+    const query = search.trim().toLowerCase();
+
+    return [
+      getEmployeeName(employee),
+      employee.department,
+      employee.designation,
+      employee.status,
+      employee.id,
+    ].some((value) =>
+      String(value ?? "").toLowerCase().includes(query)
+    );
+  });
+
+  const pageDescriptions = {
+    Dashboard: "Here's what's happening across your organization today.",
+    Employees: "View and manage your employee directory.",
+    Attendance: "Monitor employee attendance and working hours.",
+    "Leave Management": "Review employee leave requests.",
+    Payroll: "Manage salary and payroll information.",
+    Notifications: "View your HR notifications.",
+  };
+
+  async function handleAddEmployee(event) {
+    event.preventDefault();
+
+    const form = event.currentTarget;
+    const data = new FormData(form);
+
+    const employeeData = {
+      full_name: String(data.get("full_name") || "").trim(),
+      designation: String(data.get("designation") || "").trim(),
+      department: String(data.get("department") || "").trim(),
+      joining_date: data.get("joining_date"),
+      salary: Number(data.get("salary")),
+      status: data.get("status"),
+    };
+
+    if (
+      !employeeData.full_name ||
+      !employeeData.designation ||
+      !employeeData.department ||
+      !employeeData.joining_date ||
+      !Number.isFinite(employeeData.salary) ||
+      employeeData.salary < 0
+    ) {
+      setEmployeeFormError("Please enter valid employee details.");
+      return;
+    }
+
+    setSavingEmployee(true);
+    setEmployeeFormError("");
+    setSuccessMessage("");
+
+    try {
+      const createdEmployee = await apiRequest(
+        "/employees",
+        {
+          method: "POST",
+          body: JSON.stringify(employeeData),
+        },
+        token
+      );
+
+      setEmployees((current) => [createdEmployee, ...current]);
+      setShowAddEmployee(false);
+      setSuccessMessage("Employee added successfully.");
+      setSearch("");
+      form.reset();
+    } catch (error) {
+      setEmployeeFormError(
+        error.message || "Unable to add employee."
+      );
+    } finally {
+      setSavingEmployee(false);
+    }
+  }
+
+  return (
+    <div className="app-layout">
+      <aside className="sidebar">
+        <div className="brand">
+          <div className="brand-logo">W</div>
+          <div>
+            <strong>WorkSphere</strong>
+            <small>HR Management</small>
+          </div>
+        </div>
+
+        <p className="sidebar-label">WORKSPACE</p>
+
+        <nav className="sidebar-nav">
+          {MENU_ITEMS.map((item, index) => (
+            <button
+              key={item}
+              className={`nav-item ${
+                activeMenu === item ? "active" : ""
+              }`}
+              onClick={() => {
+                setActiveMenu(item);
+                setSuccessMessage("");
+                setShowAddEmployee(false);
+              }}
+            >
+              <span className="nav-icon">
+                {["⌂", "♙", "◷", "▤", "₹", "♧"][index]}
+              </span>
+              <span>{item}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="sidebar-bottom">
+          <div className="user-card">
+            <div className="avatar">
+              {getInitials(user.username || "User")}
+            </div>
+            <div className="user-info">
+              <strong>{user.username}</strong>
+              <small>{user.role}</small>
+            </div>
+          </div>
+
+          <button className="nav-item logout-button" onClick={onLogout}>
+            <span className="nav-icon">↪</span>
+            Sign Out
+          </button>
+        </div>
+      </aside>
+
+      <main className="main-area">
+        <header className="topbar">
+          <div>
+            <p className="eyebrow">WORKSPACE / {activeMenu.toUpperCase()}</p>
+          </div>
+
+          <div className="topbar-actions">
+            <input
+              className="global-search"
+              aria-label="Search employees"
+              placeholder="Search employees..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+            <div className="avatar top-avatar">
+              {getInitials(user.username || "User")}
+            </div>
+          </div>
+        </header>
+
+        <section className="page-content">
+          <div className="welcome-row">
+            <div>
+              <p className="eyebrow">WORKSPHERE HR MANAGEMENT</p>
+              <h1>{activeMenu === "Dashboard" ? "Welcome back!" : activeMenu}</h1>
+              <p className="subtitle">{pageDescriptions[activeMenu]}</p>
+            </div>
+
+            {activeMenu === "Employees" && canManageEmployees && (
+              <button
+                className="primary-button"
+                onClick={() => {
+                  setShowAddEmployee((value) => !value);
+                  setEmployeeFormError("");
+                  setSuccessMessage("");
+                }}
+              >
+                {showAddEmployee ? "Cancel" : "+ Add Employee"}
+              </button>
+            )}
+          </div>
+
+          {successMessage && (
+            <div className="success-message">{successMessage}</div>
+          )}
+
+          {activeMenu === "Employees" && showAddEmployee && (
+            <section className="panel info-panel">
+              <h3>Add Employee</h3>
+
+              <form onSubmit={handleAddEmployee} className="form-grid">
+                <label>
+                  Full Name
+                  <input
+                    name="full_name"
+                    minLength={2}
+                    maxLength={150}
+                    required
+                    placeholder="Employee full name"
+                  />
+                </label>
+
+                <label>
+                  Designation
+                  <input
+                    name="designation"
+                    minLength={2}
+                    maxLength={100}
+                    required
+                    placeholder="e.g. Software Developer"
+                  />
+                </label>
+
+                <label>
+                  Department
+                  <input
+                    name="department"
+                    minLength={2}
+                    maxLength={100}
+                    required
+                    placeholder="e.g. IT"
+                  />
+                </label>
+
+                <label>
+                  Joining Date
+                  <input name="joining_date" type="date" required />
+                </label>
+
+                <label>
+                  Salary (INR)
+                  <input
+                    name="salary"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    required
+                    placeholder="e.g. 30000"
+                  />
+                </label>
+
+                <label>
+                  Status
+                  <select name="status" defaultValue="ACTIVE">
+                    <option value="ACTIVE">Active</option>
+                    <option value="INACTIVE">Inactive</option>
+                  </select>
+                </label>
+
+                {employeeFormError && (
+                  <div className="error-message">{employeeFormError}</div>
+                )}
+
+                <div className="form-actions">
+                  <button
+                    className="primary-button"
+                    type="submit"
+                    disabled={savingEmployee}
+                  >
+                    {savingEmployee ? "Saving..." : "Save Employee"}
+                  </button>
+
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    disabled={savingEmployee}
+                    onClick={() => {
+                      setShowAddEmployee(false);
+                      setEmployeeFormError("");
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </section>
+          )}
+
+          {activeMenu === "Dashboard" && (
+            <>
+              <div className="stats-grid">
+                <StatCard
+                  title="Total Employees"
+                  value={loadingEmployees ? "..." : employees.length}
+                  detail="Employee records"
+                  icon="♙"
+                  color="purple"
+                />
+                <StatCard
+                  title="Active Employees"
+                  value={
+                    loadingEmployees
+                      ? "..."
+                      : employees.filter((item) => item.status === "ACTIVE")
+                          .length
+                  }
+                  detail="Currently active"
+                  icon="✓"
+                  color="green"
+                />
+                <StatCard
+                  title="Departments"
+                  value={
+                    loadingEmployees
+                      ? "..."
+                      : new Set(
+                          employees.map((item) => item.department).filter(Boolean)
+                        ).size
+                  }
+                  detail="Across the organization"
+                  icon="▦"
+                  color="orange"
+                />
+                <StatCard
+                  title="Monthly Payroll"
+                  value="—"
+                  detail="Payroll integration pending"
+                  icon="₹"
+                  color="blue"
+                />
+              </div>
+
+              <div className="content-grid">
+                <section className="panel">
+                  <div className="panel-heading">
+                    <div>
+                      <h3>Employee Overview</h3>
+                      <p>Latest employee records</p>
+                    </div>
+                    <button
+                      className="text-button"
+                      onClick={() => setActiveMenu("Employees")}
+                    >
+                      View all →
+                    </button>
+                  </div>
+
+                  <EmployeeTable
+                    employees={filteredEmployees.slice(0, 5)}
+                    loading={loadingEmployees}
+                    error={employeeError}
+                  />
+                </section>
+
+                <section className="panel quick-panel">
+                  <div className="panel-heading">
+                    <div>
+                      <h3>Quick Actions</h3>
+                      <p>Common HR tasks</p>
+                    </div>
+                  </div>
+
+                  <button
+                    className="quick-action"
+                    onClick={() => {
+                      setActiveMenu("Employees");
+                      setShowAddEmployee(true);
+                      setEmployeeFormError("");
+                    }}
+                    disabled={!canManageEmployees}
+                  >
+                    <span className="quick-icon">♙</span>
+                    <span>
+                      <strong>Add Employee</strong>
+                      <small>Manage employee records</small>
+                    </span>
+                    <b>→</b>
+                  </button>
+
+                  {["Attendance", "Leave Management", "Payroll"].map((item) => (
+                    <button
+                      key={item}
+                      className="quick-action"
+                      onClick={() => setActiveMenu(item)}
+                    >
+                      <span className="quick-icon">▦</span>
+                      <span>
+                        <strong>{item}</strong>
+                        <small>Open {item.toLowerCase()}</small>
+                      </span>
+                      <b>→</b>
+                    </button>
+                  ))}
+                </section>
+              </div>
+            </>
+          )}
+
+          {activeMenu === "Employees" && (
+            <section className="panel employee-panel">
+              <div className="panel-heading">
+                <div>
+                  <h3>Employee Directory</h3>
+                  <p>{filteredEmployees.length} employee record(s)</p>
+                </div>
+
+                <button
+                  className="secondary-button"
+                  onClick={loadEmployees}
+                  disabled={loadingEmployees}
+                >
+                  {loadingEmployees ? "Loading..." : "Refresh"}
+                </button>
+              </div>
+
+              <EmployeeTable
+                employees={filteredEmployees}
+                loading={loadingEmployees}
+                error={employeeError}
+                showSalary
+              />
+            </section>
+          )}
+
+          {!["Dashboard", "Employees"].includes(activeMenu) && (
+            <section className="panel section-placeholder">
+              <div className="placeholder-icon">▦</div>
+              <h2>{activeMenu}</h2>
+              <p>
+                This module's interface is ready for the next integration step.
+                Attendance, leave, payroll and notifications need their own
+                API-driven workflows.
+              </p>
+              <button
+                className="primary-button"
+                onClick={() => setActiveMenu("Dashboard")}
+              >
+                ← Back to Dashboard
+              </button>
+            </section>
+          )}
+        </section>
+      </main>
+    </div>
+  );
+}
+
+function StatCard({ title, value, detail, icon, color }) {
+  return (
+    <div className={`stat-card ${color || ""}`}>
+      <div className="stat-top">
+        <span>{title}</span>
+        <span className="stat-icon">{icon}</span>
+      </div>
+      <h2>{value}</h2>
+      <div className="stat-bottom">
+        <span>{detail}</span>
+      </div>
+    </div>
+  );
+}
+
+function EmployeeTable({
+  employees,
+  loading,
+  error,
+  showSalary = false,
+}) {
+  if (loading) {
+    return <p className="message">Loading employees...</p>;
+  }
+
+  if (error) {
+    return (
+      <div className="error-message">
+        <strong>Unable to load employees</strong>
+        <p>{error}</p>
+        <p>
+          Check that the backend is running and that your account has a valid
+          login token.
+        </p>
+      </div>
+    );
+  }
+
+  if (!employees.length) {
+    return (
+      <div className="empty-state">
+        <div className="placeholder-icon">♙</div>
+        <strong>No employees found</strong>
+        <p>Try another search or add an employee if your account has permission.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>EMPLOYEE</th>
+            <th>DEPARTMENT</th>
+            <th>DESIGNATION</th>
+            <th>JOINING DATE</th>
+            <th>STATUS</th>
+            {showSalary && <th>SALARY</th>}
+          </tr>
+        </thead>
+
+        <tbody>
+          {employees.map((employee) => {
+            const name = getEmployeeName(employee);
+
+            return (
+              <tr key={employee.id}>
+                <td>
+                  <div className="employee-cell">
+                    <div className="avatar employee-avatar">
+                      {getInitials(name)}
+                    </div>
+                    <div>
+                      <strong>{name}</strong>
+                      <small>ID: {employee.id}</small>
+                    </div>
+                  </div>
+                </td>
+                <td>{employee.department || "—"}</td>
+                <td>{employee.designation || "—"}</td>
+                <td>{formatDate(employee.joining_date)}</td>
+                <td>
+                  <span
+                    className={`status-badge ${
+                      employee.status === "ACTIVE" ? "active" : "inactive"
+                    }`}
+                  >
+                    {employee.status || "UNKNOWN"}
+                  </span>
+                </td>
+                {showSalary && <td>{formatSalary(employee.salary)}</td>}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
