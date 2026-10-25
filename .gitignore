@@ -8,3 +8,17 @@
 **/worksphere.db
 **/*.sqlite
 **/*.sqlite3
+
+.env
+.env.*
+!.env.example
+**/venv/
+**/__pycache__/
+**/*.py[cod]
+**/node_modules/
+**/dist/
+**/worksphere.db
+**/*backup*.db
+**/*backup*.py
+**/*backup*.jsx
+**/*.payslip-backup
