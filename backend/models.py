@@ -24,6 +24,7 @@ class User(Base):
     email = Column(String(150), unique=True, nullable=False, index=True)
     hashed_password = Column(String(255), nullable=False)
     role = Column(String(20), nullable=False, default="EMPLOYEE")
+    is_active = Column(Boolean, nullable=False, default=True, server_default="1")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -67,6 +68,29 @@ class Leave(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
+class LeavePolicy(Base):
+    __tablename__ = "leave_policies"
+
+    id = Column(Integer, primary_key=True, index=True)
+    leave_type = Column(String(20), unique=True, nullable=False)
+    total_days_allowed = Column(Integer, nullable=False, default=0)
+
+
+class LeaveBalance(Base):
+    __tablename__ = "leave_balances"
+    __table_args__ = (
+        UniqueConstraint(
+            "employee_id", "leave_type",
+            name="uq_leave_balance_employee_type",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    leave_type = Column(String(20), nullable=False)
+    remaining_days = Column(Integer, nullable=False, default=0)
+
+
 class Payroll(Base):
     __tablename__ = "payroll"
     __table_args__ = (
@@ -76,6 +100,7 @@ class Payroll(Base):
     id = Column(Integer, primary_key=True, index=True)
     employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
     basic_salary = Column(Float, nullable=False)
+    allowances = Column(Float, nullable=False, default=0, server_default="0")
     deductions = Column(Float, nullable=False, default=0)
     bonus = Column(Float, nullable=False, default=0)
     net_salary = Column(Float, nullable=False)

@@ -2,6 +2,7 @@
 import { apiRequest } from "./api";
 import "./App.css";
 import AttendancePage from "./Attendance";
+import NotificationsPage from "./pages/Notifications";
 const MENU_ITEMS = [
   "Dashboard",
   "Employees",
@@ -789,6 +790,7 @@ function EmployeeTable({
 function LeaveManagementPage({ token, user }) {
   const [leaves, setLeaves] = useState([]);
   const [leaveType, setLeaveType] = useState("CASUAL");
+  const [leaveBalances, setLeaveBalances] = useState([]);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [reason, setReason] = useState("");
@@ -810,11 +812,19 @@ function LeaveManagementPage({ token, user }) {
       setError(err.message || "Unable to load leave requests.");
     }
   }
-
-  useEffect(() => {
-    loadLeaves();
-  }, [token]);
-
+async function loadLeaveBalances() {
+  try {
+    const result = await apiRequest("/leave-balances", {}, token);
+    setLeaveBalances(Array.isArray(result) ? result : []);
+  } catch (err) {
+    console.error("Leave balance ലഭിച്ചില്ല:", err);
+  }
+}
+  
+   useEffect(() => {
+  loadLeaves();
+  loadLeaveBalances();
+}, [token]);
   async function applyLeave(event) {
     event.preventDefault();
     setBusy(true);
@@ -889,8 +899,50 @@ function LeaveManagementPage({ token, user }) {
 
       {message && <p role="status">{message}</p>}
       {error && <p role="alert">{error}</p>}
+      
+      
+      <div className="panel">
+        <h3>{canDecide ? "Employee Leave Balances" : "My Leave Balance"}</h3>
 
-      {!canDecide && (
+        {(() => {
+          const filteredBalances = leaveBalances.filter(
+            (balance) =>
+              canDecide ||
+              Number(balance.employee_id) === Number(user?.employee_id)
+          );
+
+          const uniqueBalances = Object.values(
+            filteredBalances.reduce((unique, balance) => {
+              const key = `${balance.employee_id}-${balance.leave_type}`;
+
+              if (!unique[key]) {
+                unique[key] = balance;
+              }
+
+              return unique;
+            }, {})
+          );
+
+          return uniqueBalances.length === 0 ? (
+            <p>No leave balance available.</p>
+          ) : (
+            uniqueBalances.map((balance) => (
+              <div
+                key={`${balance.employee_id}-${balance.leave_type}`}
+                className="leave-balance-item"
+              >
+                {canDecide && (
+                  <p>Employee ID: {balance.employee_id}</p>
+                )}
+                <strong>{balance.leave_type}</strong>
+                <p>Remaining Days: {balance.remaining_days}</p>
+              </div>
+            ))
+          );
+        })()}
+      </div>
+          
+           {!canDecide && (
         <form onSubmit={applyLeave} className="leave-form">
           <h3>Apply for Leave</h3>
 
@@ -1037,21 +1089,24 @@ function PayrollPage({ token, user }) {
   const [employeeId, setEmployeeId] = useState("");
   const [month, setMonth] = useState("2026-10");
   const [basicSalary, setBasicSalary] = useState("");
+  const [allowances, setAllowances] = useState("0");
   const [bonus, setBonus] = useState("0");
   const [deductions, setDeductions] = useState("0");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [selectedPayslip, setSelectedPayslip] = useState(null);
+  const [payslipBusy, setPayslipBusy] = useState(false);
 
   const canManage = ["ADMIN", "HR"].includes(
     String(user?.role || "").toUpperCase()
   );
 
   const netSalary =
-    (Number(basicSalary) || 0) +
-    (Number(bonus) || 0) -
-    (Number(deductions) || 0);
-
+  (Number(basicSalary) || 0) +
+  (Number(allowances) || 0) +
+  (Number(bonus) || 0) -
+  (Number(deductions) || 0);
   async function loadPayroll() {
     setError("");
 
@@ -1082,6 +1137,7 @@ function PayrollPage({ token, user }) {
           body: JSON.stringify({
             employee_id: Number(employeeId),
             basic_salary: Number(basicSalary),
+            allowances: Number(allowances),
             bonus: Number(bonus),
             deductions: Number(deductions),
             month,
@@ -1099,6 +1155,7 @@ function PayrollPage({ token, user }) {
 
       setEmployeeId("");
       setBasicSalary("");
+      setAllowances("0");
       setBonus("0");
       setDeductions("0");
 
@@ -1116,6 +1173,127 @@ function PayrollPage({ token, user }) {
       maximumFractionDigits: 2,
     })}`;
   }
+ 
+async function viewPayslip(record) {
+  setError("");
+  setSelectedPayslip(null);
+  setPayslipBusy(true);
+
+  try {
+    const result = await apiRequest(
+      `/payroll/${record.id}/payslip`,
+      {},
+      token
+    );
+    setSelectedPayslip(result);
+  } catch (err) {
+    setError(err.message || "Unable to load payslip.");
+  } finally {
+    setPayslipBusy(false);
+  }
+}
+
+function downloadPayslipPdf() {
+  if (!selectedPayslip) return;
+
+  const p = selectedPayslip;
+  const escapeHtml = (value) =>
+    String(value ?? "").replace(/[&<>"']/g, (char) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    })[char]);
+
+  const moneyValue = (value) =>
+    `₹${Number(value || 0).toLocaleString("en-IN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+
+  const printWindow = window.open("", "_blank");
+
+  if (!printWindow) {
+    setError("Please allow pop-ups to print the payslip.");
+    return;
+  }
+
+  const rows = [
+    ["Basic Salary", p.basic_salary],
+    ["Allowances", p.allowances],
+    ["Bonus", p.bonus],
+    ["Deductions", -Number(p.deductions || 0)],
+  ];
+
+  printWindow.document.open();
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Payslip - ${escapeHtml(p.month)}</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          margin: 40px;
+          color: #222;
+        }
+        h1, h2 { text-align: center; }
+        .details { margin: 25px 0; line-height: 1.9; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td {
+          border: 1px solid #ccc;
+          padding: 12px;
+          text-align: left;
+        }
+        th:last-child, td:last-child { text-align: right; }
+        .net {
+          margin-top: 20px;
+          padding: 15px;
+          border: 2px solid #333;
+          font-size: 20px;
+          font-weight: bold;
+          text-align: right;
+        }
+        @media print {
+          body { margin: 15mm; }
+        }
+      </style>
+    </head>
+    <body>
+      <h1>WorkSphere HRMS</h1>
+      <h2>Salary Payslip</h2>
+      <div class="details">
+        <strong>Employee:</strong> ${escapeHtml(p.employee_name)}<br>
+        <strong>Employee ID:</strong> ${escapeHtml(p.employee_id)}<br>
+        <strong>Designation:</strong> ${escapeHtml(p.designation)}<br>
+        <strong>Department:</strong> ${escapeHtml(p.department)}<br>
+        <strong>Payroll Month:</strong> ${escapeHtml(p.month)}
+      </div>
+      <table>
+        <thead><tr><th>Description</th><th>Amount</th></tr></thead>
+        <tbody>
+          ${rows.map(([label, amount]) => `
+            <tr>
+              <td>${escapeHtml(label)}</td>
+              <td>${moneyValue(amount)}</td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+      <div class="net">Net Salary: ${moneyValue(p.net_salary)}</div>
+      <script>
+        window.onload = function() {
+          window.focus();
+          window.print();
+        };
+      <\/script>
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+}
 
   return (
     <section className="panel">
@@ -1178,6 +1356,20 @@ function PayrollPage({ token, user }) {
           </div>
 
           <div className="form-group">
+         
+<div className="form-group">
+  <label htmlFor="pay-allowances">Allowances (₹)</label>
+  <input
+    id="pay-allowances"
+    type="number"
+    min="0"
+    step="0.01"
+    value={allowances}
+    onChange={(event) => setAllowances(event.target.value)}
+    required
+  />
+</div>
+
             <label htmlFor="pay-bonus">Bonus (₹)</label>
             <input
               id="pay-bonus"
@@ -1243,9 +1435,11 @@ function PayrollPage({ token, user }) {
                 {canManage && <th>Employee ID</th>}
                 <th>Month</th>
                 <th>Basic Salary</th>
+                <th>Allowances</th>
                 <th>Bonus</th>
                 <th>Deductions</th>
                 <th>Net Salary</th>
+                <th>Payslip</th>
               </tr>
             </thead>
             <tbody>
@@ -1254,15 +1448,81 @@ function PayrollPage({ token, user }) {
                   {canManage && <td>{record.employee_id}</td>}
                   <td>{record.month}</td>
                   <td>{money(record.basic_salary)}</td>
+                  <td>{money(record.allowances)}</td>
                   <td>{money(record.bonus)}</td>
                   <td>{money(record.deductions)}</td>
                   <td><strong>{money(record.net_salary)}</strong></td>
+                  <td>
+  <button
+    type="button"
+    className="secondary-button"
+    onClick={() => viewPayslip(record)}
+    disabled={payslipBusy}
+  >
+    View Payslip
+  </button>
+</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+    
+{selectedPayslip && (
+  <div className="panel" style={{ marginTop: 24 }}>
+    <div className="panel-heading">
+      <div>
+        <h3>Salary Payslip</h3>
+        <p>WorkSphere HRMS · {selectedPayslip.month}</p>
+      </div>
+
+      <button
+        type="button"
+        className="secondary-button"
+        onClick={() => setSelectedPayslip(null)}
+      >
+        Close
+      </button>
+    </div>
+
+    <p><strong>Employee:</strong> {selectedPayslip.employee_name}</p>
+    <p><strong>Employee ID:</strong> {selectedPayslip.employee_id}</p>
+    <p><strong>Designation:</strong> {selectedPayslip.designation}</p>
+    <p><strong>Department:</strong> {selectedPayslip.department}</p>
+
+    <div className="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Basic Salary</td><td>{money(selectedPayslip.basic_salary)}</td></tr>
+          <tr><td>Allowances</td><td>{money(selectedPayslip.allowances)}</td></tr>
+          <tr><td>Bonus</td><td>{money(selectedPayslip.bonus)}</td></tr>
+          <tr><td>Deductions</td><td>{money(selectedPayslip.deductions)}</td></tr>
+          <tr>
+            <td><strong>Net Salary</strong></td>
+            <td><strong>{money(selectedPayslip.net_salary)}</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <button
+      type="button"
+      className="primary-button"
+      onClick={downloadPayslipPdf}
+      style={{ marginTop: 16 }}
+    >
+      Download / Save as PDF
+    </button>
+  </div>
+)}
+
     </section>
   );
 }

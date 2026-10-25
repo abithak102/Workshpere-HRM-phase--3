@@ -1,7 +1,7 @@
 
 from datetime import date
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
-
+from typing import Literal
 
 class UserCreate(BaseModel):
     username: str = Field(min_length=3, max_length=50)
@@ -14,9 +14,21 @@ class UserOut(BaseModel):
     username: str
     email: EmailStr
     role: str
+    is_active: bool = True
 
     model_config = ConfigDict(from_attributes=True)
 
+
+class AdminUserCreate(BaseModel):
+    username: str = Field(min_length=3, max_length=50)
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+    role: Literal["EMPLOYEE", "HR", "ADMIN"] = "EMPLOYEE"
+
+
+class UserAdminUpdate(BaseModel):
+    role: Literal["EMPLOYEE", "HR", "ADMIN"] | None = None
+    is_active: bool | None = None
 
 class Token(BaseModel):
     access_token: str
@@ -66,8 +78,13 @@ class LeaveCreate(BaseModel):
     def validate_dates(self):
         if self.end_date < self.start_date:
             raise ValueError("End date must not be before start date")
+
+        if self.start_date < date.today():
+            raise ValueError("Leave cannot start in the past")
+
         if self.leave_type not in {"SICK", "CASUAL", "PAID"}:
             raise ValueError("Invalid leave type")
+
         return self
 
 
@@ -82,10 +99,10 @@ class LeaveOut(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-
 class PayrollCreate(BaseModel):
     employee_id: int
     basic_salary: float = Field(ge=0)
+    allowances: float = Field(default=0, ge=0)
     deductions: float = Field(default=0, ge=0)
     bonus: float = Field(default=0, ge=0)
     month: str = Field(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
@@ -95,6 +112,7 @@ class PayrollOut(BaseModel):
     id: int
     employee_id: int
     basic_salary: float
+    allowances: float
     deductions: float
     bonus: float
     net_salary: float
@@ -102,6 +120,8 @@ class PayrollOut(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
+   
 
 class NotificationOut(BaseModel):
     id: int
