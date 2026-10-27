@@ -1,0 +1,163 @@
+
+.performance-page {
+  padding: 24px;
+  color: #243047;
+}
+
+.performance-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.performance-header h2 {
+  margin: 0 0 8px;
+}
+
+.performance-header p {
+  margin: 0;
+  color: #667085;
+}
+
+.performance-form,
+.performance-filter,
+.performance-card {
+  padding: 20px;
+  margin-bottom: 20px;
+  border: 1px solid #e1e6ef;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.performance-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 700px;
+}
+
+.performance-form h3,
+.performance-list h3 {
+  margin-top: 0;
+}
+
+.performance-page input,
+.performance-page select,
+.performance-page textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #ccd3df;
+  border-radius: 7px;
+  font: inherit;
+}
+
+.performance-page textarea {
+  min-height: 85px;
+  resize: vertical;
+}
+
+.performance-page button {
+  width: fit-content;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 7px;
+  background: #2855b7;
+  color: white;
+  cursor: pointer;
+  font: inherit;
+}
+
+.performance-page button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.performance-refresh {
+  flex-shrink: 0;
+}
+
+.performance-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.performance-filter label {
+  width: 100%;
+}
+
+.performance-filter input {
+  max-width: 250px;
+}
+
+.performance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.performance-card {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.performance-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.performance-card-top h4 {
+  margin: 0 0 14px;
+}
+
+.performance-rating {
+  padding: 6px 10px;
+  border-radius: 20px;
+  background: #e8efff;
+  color: #244c9b;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.performance-card p {
+  line-height: 1.5;
+}
+
+.performance-card small {
+  color: #667085;
+}
+
+.performance-error {
+  color: #b42318;
+  padding: 10px;
+  background: #fef3f2;
+  border-radius: 7px;
+}
+
+.performance-success {
+  color: #067647;
+  padding: 10px;
+  background: #ecfdf3;
+  border-radius: 7px;
+}
+
+@media (max-width: 600px) {
+  .performance-page {
+    padding: 12px;
+  }
+
+  .performance-header {
+    align-items: flex-start;
+  }
+
+  .performance-filter {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

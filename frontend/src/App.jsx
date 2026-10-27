@@ -1,15 +1,25 @@
 ﻿import { useEffect, useState } from "react";
 import { apiRequest } from "./api";
 import "./App.css";
+import PerformancePage from "./pages/Performance";
 import AttendancePage from "./Attendance";
 import NotificationsPage from "./pages/Notifications";
-const MENU_ITEMS = [
+import ShiftManagement from "./ShiftManagement.jsx";
+import LeaveManagementPageExternal from "./pages/LeaveManagement";
+import "./pages/Payroll.css";
+import ReportsPage from "./pages/Reports";
+import DocumentsPage from "./pages/Documents";
+import PayrollPageExternal from "./pages/Payroll";const MENU_ITEMS = [
   "Dashboard",
   "Employees",
   "Attendance",
+  "Shift Management",
   "Leave Management",
   "Payroll",
+  "Documents",
   "Notifications",
+  "Performance Management",
+  "Reports & Analytics",
 ];
 
 function getEmployeeName(employee) {
@@ -231,7 +241,16 @@ function Dashboard({ token, user, onLogout }) {
   const [employees, setEmployees] = useState([]);
   const [loadingEmployees, setLoadingEmployees] = useState(true);
   const [employeeError, setEmployeeError] = useState("");
-  const [search, setSearch] = useState("");
+  
+const [search, setSearch] = useState("");
+const [filterDepartment, setFilterDepartment] = useState("");
+const [filterRole, setFilterRole] = useState("");
+const [filterStatus, setFilterStatus] = useState("");
+const [filterAttendance, setFilterAttendance] = useState("");
+const [filterPerformance, setFilterPerformance] = useState("");
+const [employeeAttendance, setEmployeeAttendance] = useState([]);
+const [performanceReviews, setPerformanceReviews] = useState([]);
+
   const [showAddEmployee, setShowAddEmployee] = useState(false);
   const [savingEmployee, setSavingEmployee] = useState(false);
   const [employeeFormError, setEmployeeFormError] = useState("");
@@ -280,8 +299,9 @@ function Dashboard({ token, user, onLogout }) {
     Employees: "View and manage your employee directory.",
     Attendance: "Monitor employee attendance and working hours.",
     "Leave Management": "Review employee leave requests.",
-    Payroll: "Manage salary and payroll information.",
-    Notifications: "View your HR notifications.",
+   "Payroll": "Manage salary and payroll information.",
+    "Notifications": "View your HR notifications.",
+    "Reports & Analytics": "View employee, attendance, leave and payroll reports.",
   };
 
   async function handleAddEmployee(event) {
@@ -353,7 +373,11 @@ function Dashboard({ token, user, onLogout }) {
         <p className="sidebar-label">WORKSPACE</p>
 
         <nav className="sidebar-nav">
-          {MENU_ITEMS.map((item, index) => (
+          {MENU_ITEMS.filter(
+  (item) =>
+    item !== "Shift Management" ||
+    String(user?.role || "").toUpperCase() === "ADMIN"
+).map((item, index) => (
             <button
               key={item}
               className={`nav-item ${
@@ -574,7 +598,7 @@ function Dashboard({ token, user, onLogout }) {
               </div>
 
               <div className="content-grid">
-                <section className="panel">
+                <section className="panel ">
                   <div className="panel-heading">
                     <div>
                       <h3>Employee Overview</h3>
@@ -669,11 +693,12 @@ function Dashboard({ token, user, onLogout }) {
           {activeMenu === "Attendance" && (
             <AttendancePage token={token} />
           )}
-
+         {activeMenu === "Shift Management" && (
+  <ShiftManagement token={token} />
+)}
           {activeMenu === "Leave Management" && (
-            <LeaveManagementPage token={token} user={user} />
-          )}
-
+  <LeaveManagementPageExternal token={token} user={user} />
+)}
           {activeMenu === "Payroll" && (
             <PayrollPage token={token} user={user} />
           )}
@@ -681,6 +706,15 @@ function Dashboard({ token, user, onLogout }) {
           {activeMenu === "Notifications" && (
             <NotificationsPage token={token} />
           )}
+          {activeMenu === "Performance Management" && (
+  <PerformancePage token={token} user={user} />
+)}
+        {activeMenu === "Documents" && (
+  <DocumentsPage token={token} user={user} />
+)}
+       {activeMenu === "Reports & Analytics" && (
+  <ReportsPage token={token} user={user} />
+)}
 </section>
       </main>
     </div>
@@ -1296,7 +1330,7 @@ function downloadPayslipPdf() {
 }
 
   return (
-    <section className="panel">
+    <section className="panel payroll-page">
       <div className="panel-heading">
         <div>
           <h3>Payroll Management</h3>

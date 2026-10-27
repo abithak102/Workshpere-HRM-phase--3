@@ -1,0 +1,131 @@
+
+.documents-page {
+  padding: 24px;
+  color: #1e293b;
+  background: #f8fafc;
+  min-height: 100%;
+  border-radius: 12px;
+}
+
+.documents-page h2 {
+  margin: 0 0 8px;
+  font-size: 26px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.documents-page > p {
+  margin: 0 0 24px;
+  color: #64748b;
+}
+
+.documents-page form,
+.documents-page > div {
+  background: #ffffff;
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  margin-bottom: 18px;
+}
+
+.documents-page label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: #334155;
+}
+
+.documents-page input[type="number"],
+.documents-page input[type="file"] {
+  display: block;
+  width: 100%;
+  max-width: 460px;
+  box-sizing: border-box;
+  padding: 11px;
+  margin-bottom: 18px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #1e293b;
+}
+
+.documents-page button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.documents-page button:hover {
+  background: #1d4ed8;
+}
+
+.documents-page button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.documents-page h3 {
+  margin-top: 0;
+  color: #0f172a;
+}
+
+.documents-page table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+  background: #fff;
+}
+
+.documents-page th,
+.documents-page td {
+  padding: 13px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.documents-page th {
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.documents-page tbody tr:hover {
+  background: #f8fafc;
+}
+
+.documents-page td button {
+  background: #dc2626;
+}
+
+.documents-page td button:hover {
+  background: #b91c1c;
+}
+
+@media (max-width: 768px) {
+  .documents-page {
+    padding: 14px;
+  }
+
+  .documents-page h2 {
+    font-size: 22px;
+  }
+
+  .documents-page form,
+  .documents-page > div {
+    padding: 14px;
+  }
+
+  .documents-page th,
+  .documents-page td {
+    padding: 9px;
+    font-size: 13px;
+  }
+}

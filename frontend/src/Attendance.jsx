@@ -1,4 +1,4 @@
-
+import "./Attendance.css";
 import { useCallback, useEffect, useState } from "react";
 
 const API_URL = "http://127.0.0.1:8000";
@@ -114,7 +114,7 @@ export default function AttendancePage({ token }) {
   }
 
   return (
-    <section className="panel">
+     <section className="panel attendance-page">
       <div className="panel-heading">
         <div>
           <h3>Attendance Management</h3>

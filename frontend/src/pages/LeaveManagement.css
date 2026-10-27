@@ -1,0 +1,585 @@
+
+/* =========================================
+   WORKSPHERE HRMS
+   LEAVE MANAGEMENT - EMERALD THEME
+   This stylesheet is scoped to this page
+========================================= */
+
+.leave-management {
+  --leave-bg: #f3f7f8;
+  --leave-card: #ffffff;
+  --leave-text: #172b3a;
+  --leave-muted: #718096;
+  --leave-green: #059669;
+  --leave-green-dark: #047857;
+  --leave-border: #e0e9eb;
+
+  width: 100%;
+  min-height: 100%;
+  box-sizing: border-box;
+  padding: 28px;
+  color: var(--leave-text);
+  background:
+    radial-gradient(
+      circle at top right,
+      rgba(16, 185, 129, 0.09),
+      transparent 32%
+    ),
+    var(--leave-bg);
+  border-radius: 16px;
+  font-family: Inter, "Segoe UI", sans-serif;
+}
+
+.leave-management * {
+  box-sizing: border-box;
+}
+
+.leave-management h1 {
+  margin: 0 0 8px;
+  color: #142d3a;
+  font-size: clamp(24px, 3vw, 31px);
+  font-weight: 800;
+  letter-spacing: -0.8px;
+}
+
+.leave-management h1::before {
+  content: "";
+  display: inline-block;
+  width: 5px;
+  height: 27px;
+  margin-right: 12px;
+  vertical-align: -4px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #34d399, #047857);
+}
+
+.leave-management h2 {
+  margin: 0 0 20px;
+  color: #203b49;
+  font-size: 19px;
+  font-weight: 750;
+}
+
+.leave-management p {
+  color: var(--leave-muted);
+  line-height: 1.6;
+}
+
+/* Page header */
+
+.leave-management .leave-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 26px;
+}
+
+.leave-management .leave-header p {
+  margin: 6px 0 0;
+  font-size: 14px;
+}
+
+/* Summary cards (optional) */
+
+.leave-management .leave-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 25px;
+}
+
+.leave-management .leave-stat-card {
+  padding: 21px;
+  background: var(--leave-card);
+  border: 1px solid var(--leave-border);
+  border-radius: 15px;
+  box-shadow: 0 5px 18px rgba(24, 55, 70, 0.045);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.leave-management .leave-stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(24, 55, 70, 0.09);
+}
+
+.leave-management .leave-stat-card .stat-value {
+  display: block;
+  margin-top: 10px;
+  color: var(--leave-green-dark);
+  font-size: 27px;
+  font-weight: 800;
+}
+
+.leave-management .leave-stat-card .stat-label {
+  color: var(--leave-muted);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+/* Request form and content cards */
+
+.leave-management .leave-form,
+.leave-management .leave-card,
+.leave-management .leave-table-section {
+  position: relative;
+  min-width: 0;
+  padding: 25px;
+  margin-bottom: 24px;
+  background: var(--leave-card);
+  border: 1px solid var(--leave-border);
+  border-radius: 16px;
+  box-shadow: 0 5px 20px rgba(24, 55, 70, 0.045);
+}
+
+.leave-management .leave-form::before,
+.leave-management .leave-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 25px;
+  right: 25px;
+  height: 3px;
+  border-radius: 0 0 5px 5px;
+  background: linear-gradient(90deg, #10b981, #a7f3d0);
+}
+
+.leave-management .leave-form h2,
+.leave-management .leave-card h2,
+.leave-management .leave-table-section h2 {
+  margin-top: 2px;
+}
+
+/* Form layout */
+
+.leave-management .leave-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 19px;
+  align-items: start;
+}
+
+.leave-management .form-group {
+  min-width: 0;
+}
+
+.leave-management .form-full-width {
+  grid-column: 1 / -1;
+}
+
+/* Labels */
+
+.leave-management label {
+  display: block;
+  margin-bottom: 8px;
+  color: #3b5361;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* Inputs */
+
+.leave-management input,
+.leave-management select,
+.leave-management textarea {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 45px;
+  padding: 12px 14px;
+  color: #203746;
+  background: #f9fbfc;
+  border: 1px solid #d7e3e7;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.leave-management textarea {
+  min-height: 105px;
+  resize: vertical;
+}
+
+.leave-management input::placeholder,
+.leave-management textarea::placeholder {
+  color: #9aaab4;
+}
+
+.leave-management input:hover,
+.leave-management select:hover,
+.leave-management textarea:hover {
+  border-color: #9bcdbb;
+}
+
+.leave-management input:focus,
+.leave-management select:focus,
+.leave-management textarea:focus {
+  background: #ffffff;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12);
+}
+
+/* Buttons */
+
+.leave-management button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 43px;
+  padding: 11px 19px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #10b981, #047857);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(5, 150, 105, 0.15);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
+}
+
+.leave-management button:hover {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
+  box-shadow: 0 7px 16px rgba(5, 150, 105, 0.23);
+}
+
+.leave-management button:active {
+  transform: translateY(0);
+}
+
+.leave-management button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Requests table */
+
+.leave-management .table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--leave-border);
+  border-radius: 12px;
+}
+
+.leave-management table {
+  width: 100%;
+  min-width: 650px;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: #ffffff;
+  text-align: left;
+  font-size: 13px;
+}
+
+.leave-management thead th {
+  padding: 15px 16px;
+  color: #47616d;
+  background: #edf7f3;
+  border-bottom: 1px solid #d9eae3;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.45px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.leave-management tbody td {
+  padding: 15px 16px;
+  color: #344d5b;
+  border-bottom: 1px solid #edf1f3;
+  vertical-align: middle;
+}
+
+.leave-management tbody tr {
+  transition: background 0.2s ease;
+}
+
+.leave-management tbody tr:hover {
+  background: #f1fbf6;
+}
+
+.leave-management tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Status labels: use these classes if your JSX supports them */
+
+.leave-management .status,
+.leave-management .status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.leave-management .status-pending {
+  color: #a16207;
+  background: #fef3c7;
+}
+
+.leave-management .status-approved {
+  color: #047857;
+  background: #d1fae5;
+}
+
+.leave-management .status-rejected {
+  color: #be123c;
+  background: #ffe4e6;
+}
+
+/* Error, success and empty messages */
+
+.leave-management .error,
+.leave-management .error-message {
+  padding: 12px 14px;
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.leave-management .success,
+.leave-management .success-message {
+  padding: 12px 14px;
+  color: #047857;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.leave-management .empty-state,
+.leave-management .empty-message {
+  padding: 30px 16px;
+  color: var(--leave-muted);
+  text-align: center;
+  font-size: 14px;
+}
+
+/* Tablet */
+
+@media (max-width: 768px) {
+  .leave-management {
+    padding: 18px;
+  }
+
+  .leave-management .leave-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .leave-management .leave-form,
+  .leave-management .leave-card,
+  .leave-management .leave-table-section {
+    padding: 19px;
+  }
+}
+
+/* Mobile */
+
+@media (max-width: 520px) {
+  .leave-management {
+    padding: 12px;
+  }
+
+  .leave-management h1 {
+    font-size: 23px;
+  }
+
+  .leave-management .leave-stats,
+  .leave-management .leave-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .leave-management .leave-form,
+  .leave-management .leave-card,
+  .leave-management .leave-table-section {
+    padding: 16px;
+    border-radius: 13px;
+  }
+
+  .leave-management .leave-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .leave-management .leave-header button {
+    width: 100%;
+  }
+
+  .leave-management .form-full-width {
+    grid-column: auto;
+  }
+}
+
+.leave-calendar-section {
+  margin: 24px 0;
+  padding: 20px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow-x: auto;
+}
+
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.calendar-header h2,
+.calendar-navigation h3 {
+  margin: 0;
+}
+
+.calendar-navigation {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.calendar-navigation button {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #f9fafb;
+  cursor: pointer;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(100px, 1fr));
+  min-width: 700px;
+  border-top: 1px solid #e5e7eb;
+  border-left: 1px solid #e5e7eb;
+}
+
+.calendar-weekday {
+  padding: 10px;
+  text-align: center;
+  font-weight: 600;
+  background: #f3f4f6;
+}
+
+.calendar-weekday,
+.calendar-day {
+  border-right: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.calendar-day {
+  min-height: 100px;
+  padding: 8px;
+  background: #ffffff;
+}
+
+.calendar-day.empty {
+  background: #f9fafb;
+}
+
+.calendar-date {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.calendar-leaves {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.calendar-leave {
+  padding: 5px;
+  border-radius: 4px;
+  background: #dbeafe;
+  color: #1e40af;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.calendar-leave.approved {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.calendar-leave.pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.calendar-navigation button {
+  background-color: #1d4ed8;
+  color: #ffffff;
+  border: 1px solid #1d4ed8;
+  font-weight: 600;
+  padding: 9px 14px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.calendar-navigation button:hover {
+  background-color: #1e3a8a;
+}
+
+.calendar-count-button {
+  width: 100%;
+  padding: 6px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  border: none;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.calendar-count-button:hover {
+  background: #bfdbfe;
+}
+
+.calendar-details {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #f9fafb;
+}
+
+.calendar-detail-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.calendar-close-button {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: #374151;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}

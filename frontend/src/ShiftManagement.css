@@ -1,0 +1,423 @@
+
+/* ==========================================
+   WORKSPHERE HRMS
+   SHIFT MANAGEMENT - DARK NEON THEME
+   Scoped to this page only
+========================================== */
+
+.shift-management {
+  --sm-bg: #080b16;
+  --sm-card: #111629;
+  --sm-card-hover: #171d34;
+  --sm-border: #252d49;
+  --sm-text: #f1f5ff;
+  --sm-muted: #929dbb;
+  --sm-purple: #a78bfa;
+  --sm-blue: #38bdf8;
+  --sm-green: #34d399;
+  --sm-red: #fb7185;
+
+  width: 100%;
+  min-height: 100%;
+  padding: 28px;
+  box-sizing: border-box;
+  color: var(--sm-text);
+  background:
+    radial-gradient(
+      ellipse at 10% 0%,
+      rgba(124, 58, 237, 0.13),
+      transparent 42%
+    ),
+    radial-gradient(
+      ellipse at 100% 20%,
+      rgba(14, 165, 233, 0.09),
+      transparent 38%
+    ),
+    var(--sm-bg);
+  border-radius: 18px;
+  font-family: Inter, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+
+/* Headings */
+
+.shift-management h1 {
+  color: var(--sm-text);
+  font-size: clamp(24px, 3vw, 32px);
+  font-weight: 800;
+  letter-spacing: -1px;
+  margin: 0 0 10px;
+}
+
+.shift-management h1::before {
+  content: "";
+  display: inline-block;
+  width: 5px;
+  height: 28px;
+  margin-right: 12px;
+  vertical-align: -4px;
+  border-radius: 8px;
+  background: linear-gradient(
+    180deg,
+    var(--sm-purple),
+    var(--sm-blue)
+  );
+  box-shadow: 0 0 14px rgba(167, 139, 250, 0.7);
+}
+
+.shift-management h2,
+.shift-management h3 {
+  color: var(--sm-text);
+  font-weight: 750;
+  letter-spacing: -0.3px;
+  margin-top: 0;
+}
+
+.shift-management h2 {
+  font-size: 19px;
+  margin-bottom: 20px;
+}
+
+.shift-management h3 {
+  font-size: 16px;
+}
+
+.shift-management p {
+  color: var(--sm-muted);
+  line-height: 1.7;
+}
+
+/* Main layout helpers */
+
+.shift-management .shift-grid,
+.shift-management .shift-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.shift-management .section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+/* Cards and forms */
+
+.shift-management .leave-form,
+.shift-management .shift-card,
+.shift-management .shift-table-section {
+  position: relative;
+  min-width: 0;
+  padding: 24px;
+  margin-bottom: 22px;
+  overflow: hidden;
+  background: linear-gradient(
+    145deg,
+    rgba(22, 29, 52, 0.97),
+    rgba(13, 18, 35, 0.98)
+  );
+  border: 1px solid var(--sm-border);
+  border-radius: 18px;
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.25s ease;
+}
+
+.shift-management .leave-form::before,
+.shift-management .shift-card::before,
+.shift-management .shift-table-section::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 24px;
+  right: 24px;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(167, 139, 250, 0.75),
+    rgba(56, 189, 248, 0.55),
+    transparent
+  );
+}
+
+.shift-management .leave-form:hover,
+.shift-management .shift-card:hover,
+.shift-management .shift-table-section:hover {
+  border-color: rgba(129, 140, 248, 0.5);
+  box-shadow:
+    0 12px 35px rgba(0, 0, 0, 0.25),
+    0 0 20px rgba(99, 102, 241, 0.08);
+}
+
+/* Labels */
+
+.shift-management label {
+  display: block;
+  margin-bottom: 9px;
+  color: #c7d2fe;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+/* Input fields */
+
+.shift-management input,
+.shift-management select,
+.shift-management textarea {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 45px;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  color: var(--sm-text);
+  background: #0b1020;
+  border: 1px solid #303a5c;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.shift-management input::placeholder,
+.shift-management textarea::placeholder {
+  color: #737f9e;
+}
+
+.shift-management input:hover,
+.shift-management select:hover,
+.shift-management textarea:hover {
+  border-color: #59658a;
+}
+
+.shift-management input:focus,
+.shift-management select:focus,
+.shift-management textarea:focus {
+  background: #10162b;
+  border-color: var(--sm-purple);
+  box-shadow:
+    0 0 0 3px rgba(167, 139, 250, 0.12),
+    0 0 15px rgba(139, 92, 246, 0.1);
+}
+
+.shift-management select option {
+  color: var(--sm-text);
+  background: #111629;
+}
+
+/* Buttons */
+
+.shift-management button {
+  min-height: 42px;
+  padding: 11px 18px;
+  color: #ffffff;
+  background: linear-gradient(100deg, #7c3aed, #4f46e5);
+  border: 1px solid rgba(196, 181, 253, 0.28);
+  border-radius: 10px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 750;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.17);
+  transition:
+    filter 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.shift-management button:hover {
+  filter: brightness(1.15);
+  transform: translateY(-1px);
+  box-shadow:
+    0 6px 20px rgba(99, 102, 241, 0.3),
+    0 0 12px rgba(167, 139, 250, 0.12);
+}
+
+.shift-management button:active {
+  transform: translateY(0);
+}
+
+.shift-management button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Tables */
+
+.shift-management .table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--sm-border);
+  border-radius: 12px;
+}
+
+.shift-management table {
+  width: 100%;
+  min-width: 470px;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: transparent;
+  text-align: left;
+  font-size: 13px;
+}
+
+.shift-management thead th {
+  padding: 15px 17px;
+  color: #c4b5fd;
+  background: #191f38;
+  border-bottom: 1px solid #343c5b;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.shift-management tbody td {
+  padding: 15px 17px;
+  color: #d8def0;
+  border-bottom: 1px solid rgba(48, 58, 92, 0.65);
+  vertical-align: middle;
+}
+
+.shift-management tbody tr {
+  background: rgba(13, 18, 35, 0.45);
+  transition: background 0.2s ease;
+}
+
+.shift-management tbody tr:hover {
+  background: rgba(99, 102, 241, 0.09);
+}
+
+.shift-management tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Optional status badges */
+
+.shift-management .status,
+.shift-management .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  color: #a7f3d0;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(52, 211, 153, 0.22);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+/* Feedback messages */
+
+.shift-management .error,
+.shift-management .error-message {
+  padding: 12px 14px;
+  color: #fda4af;
+  background: rgba(244, 63, 94, 0.09);
+  border: 1px solid rgba(251, 113, 133, 0.3);
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.shift-management .success,
+.shift-management .success-message {
+  padding: 12px 14px;
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.09);
+  border: 1px solid rgba(52, 211, 153, 0.25);
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.shift-management .empty-state,
+.shift-management .empty-message {
+  padding: 30px 16px;
+  color: var(--sm-muted);
+  text-align: center;
+  font-size: 14px;
+}
+
+/* Scrollbar */
+
+.shift-management .table-responsive::-webkit-scrollbar {
+  height: 7px;
+}
+
+.shift-management .table-responsive::-webkit-scrollbar-track {
+  background: #0b1020;
+}
+
+.shift-management .table-responsive::-webkit-scrollbar-thumb {
+  background: #45416d;
+  border-radius: 10px;
+}
+
+/* Tablet */
+
+@media (max-width: 768px) {
+  .shift-management {
+    padding: 18px;
+    border-radius: 12px;
+  }
+
+  .shift-management .shift-grid,
+  .shift-management .shift-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .shift-management .leave-form,
+  .shift-management .shift-card,
+  .shift-management .shift-table-section {
+    padding: 18px;
+  }
+
+  .shift-management .section-heading {
+    align-items: flex-start;
+  }
+}
+
+/* Mobile */
+
+@media (max-width: 480px) {
+  .shift-management {
+    padding: 12px;
+  }
+
+  .shift-management h1 {
+    font-size: 23px;
+  }
+
+  .shift-management .leave-form,
+  .shift-management .shift-card,
+  .shift-management .shift-table-section {
+    padding: 15px;
+    border-radius: 13px;
+  }
+
+  .shift-management .section-heading {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .shift-management .section-heading button {
+    width: 100%;
+  }
+}

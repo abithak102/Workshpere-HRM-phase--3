@@ -13,9 +13,13 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from database import Base, engine, get_db
+from routers.documents import router as documents_router
+from routers.reports import router as reports_router
 from models import (
     User, Employee, Attendance, Leave, Payroll, Notification,
-    LeavePolicy, LeaveBalance,
+     LeavePolicy, LeaveBalance, Shift, EmployeeShift,
+    EmployeeDocument,
+    PerformanceReview,
 )
 from schemas import (
     UserCreate, UserOut, Token,
@@ -65,7 +69,8 @@ def seed_leave_policies():
 seed_leave_policies()
 
 app = FastAPI(title="WorkSphere HRMS API", version="1.0.0")
-
+app.include_router(documents_router)
+app.include_router(reports_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
@@ -341,9 +346,36 @@ def check_in(
 
     checkin_time = datetime.now(timezone.utc)
 
-    # Shift starts at 09:00 AM IST.
-    is_late = now_ist.time().replace(tzinfo=None) > time(9, 0, 0)
+        
+    assignment = db.query(EmployeeShift).filter(
+        EmployeeShift.employee_id == employee.id
+    ).first()
+
+    shift = None
+    if assignment:
+        shift = db.query(Shift).filter(
+            Shift.id == assignment.shift_id
+        ).first()
+
+    if shift:
+        shift_start = time.fromisoformat(shift.start_time)
+        is_late = (
+            now_ist.time().replace(tzinfo=None) > shift_start
+        )
+    else:
+        # Default shift start time for employees without an assignment.
+        is_late = (
+            now_ist.time().replace(tzinfo=None) > time(9, 0, 0)
+        )
+
     attendance_status = "LATE" if is_late else "PRESENT"
+    if is_late and employee.user_id:
+        notify(
+            db,
+            employee.user_id,
+            "Late Attendance Alert",
+            f"Your check-in on {today.isoformat()} was recorded as LATE.",
+        )
 
     if record:
         record.check_in = checkin_time
@@ -368,11 +400,18 @@ def check_in(
 
 
 
+
 @app.post("/attendance/check-out")
 def check_out(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    from datetime import timedelta
+
+    ist = timezone(timedelta(hours=5, minutes=30))
+    now_ist = datetime.now(ist)
+    today = now_ist.date()
+
     employee = get_my_employee(db, user)
 
     if employee.status != "ACTIVE":
@@ -381,45 +420,100 @@ def check_out(
             detail="Inactive employees cannot check out",
         )
 
-    record = db.query(Attendance).filter(
-        Attendance.employee_id == employee.id,
-        Attendance.date == date.today(),
-    ).first()
+    # Find today's or yesterday's open attendance record.
+    # Yesterday's record is needed for overnight shifts.
+    record = (
+        db.query(Attendance)
+        .filter(
+            Attendance.employee_id == employee.id,
+            Attendance.date >= today - timedelta(days=1),
+            Attendance.date <= today,
+            Attendance.check_in.isnot(None),
+            Attendance.check_out.is_(None),
+        )
+        .order_by(Attendance.date.desc())
+        .first()
+    )
 
-    if not record or not record.check_in:
-        raise HTTPException(status_code=400, detail="Check in first")
+    if not record:
+        raise HTTPException(
+            status_code=400,
+            detail="No open check-in record found. Check in first.",
+        )
 
-    if record.check_out:
-        raise HTTPException(status_code=409, detail="Already checked out")
+    assignment = (
+        db.query(EmployeeShift)
+        .filter(EmployeeShift.employee_id == employee.id)
+        .first()
+    )
 
-    record.check_out = utc_now()
-    db.commit()
-    db.refresh(record)
+    shift = None
+    if assignment:
+        shift = (
+            db.query(Shift)
+            .filter(Shift.id == assignment.shift_id)
+            .first()
+        )
 
+    # Determine the scheduled shift end time.
+    if shift:
+        shift_start = time.fromisoformat(shift.start_time)
+        shift_end = time.fromisoformat(shift.end_time)
+
+        scheduled_end_date = record.date
+        if shift_end <= shift_start:
+            scheduled_end_date += timedelta(days=1)
+
+        scheduled_end = datetime.combine(
+            scheduled_end_date,
+            shift_end,
+        )
+    else:
+        # Default schedule: 09:00 to 18:00.
+        scheduled_end = datetime.combine(
+            record.date,
+            time(18, 0, 0),
+        )
+
+    checkout_local = datetime.combine(
+        now_ist.date(),
+        now_ist.time().replace(tzinfo=None),
+    )
+
+    early_checkout = checkout_local < scheduled_end
+
+    # Calculate working hours using UTC timestamps.
     start = record.check_in
-    end = record.check_out
-
     if start.tzinfo is None:
         start = start.replace(tzinfo=timezone.utc)
+
+    end = utc_now()
     if end.tzinfo is None:
         end = end.replace(tzinfo=timezone.utc)
 
     hours = round((end - start).total_seconds() / 3600, 2)
 
     if hours < 0:
-        raise HTTPException(status_code=400, detail="Invalid attendance times")
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid attendance times",
+        )
 
     standard_hours = 9
     overtime_hours = round(max(0, hours - standard_hours), 2)
 
+    record.check_out = end
+    db.commit()
+    db.refresh(record)
+
     return {
         "message": "Check-out successful",
-         "working_hours": hours,
+        "working_hours": hours,
         "overtime_hours": overtime_hours,
         "status": record.status,
+        "early_checkout": early_checkout,
+        "scheduled_shift_end": scheduled_end.strftime("%Y-%m-%d %H:%M:%S"),
     }
-
-
 
 @app.get("/attendance")
 def attendance_history(
@@ -1109,3 +1203,273 @@ def admin_delete_user(
     db.commit()
     return {"message": "User deleted successfully"}
 
+# ---------------- SHIFT MANAGEMENT - PHASE 3 ----------------
+
+from pydantic import BaseModel, Field
+from datetime import time as datetime_time
+
+
+class ShiftCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=20)
+    start_time: datetime_time
+    end_time: datetime_time
+
+
+class ShiftOut(BaseModel):
+    id: int
+    name: str
+    start_time: str
+    end_time: str
+
+
+@app.post("/shifts", tags=["Shift Management"])
+def create_shift(
+    payload: ShiftCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    if user.role not in ("ADMIN", "HR"):
+        raise HTTPException(status_code=403, detail="HR or ADMIN access required")
+
+    allowed_shifts = {"MORNING", "EVENING", "NIGHT"}
+    name = payload.name.strip().upper()
+
+    if name not in allowed_shifts:
+        raise HTTPException(
+            status_code=422,
+            detail="Shift name must be MORNING, EVENING, or NIGHT",
+        )
+
+    existing = db.query(Shift).filter(Shift.name == name).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Shift already exists")
+
+    shift = Shift(
+        name=name,
+        start_time=payload.start_time.strftime("%H:%M:%S"),
+        end_time=payload.end_time.strftime("%H:%M:%S"),
+    )
+    db.add(shift)
+    db.commit()
+    db.refresh(shift)
+
+    return {
+        "id": shift.id,
+        "name": shift.name,
+        "start_time": shift.start_time,
+        "end_time": shift.end_time,
+    }
+
+
+@app.get("/shifts", tags=["Shift Management"])
+def list_shifts(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    if user.role not in ("ADMIN", "HR"):
+        raise HTTPException(status_code=403, detail="HR or ADMIN access required")
+
+    return db.query(Shift).order_by(Shift.id).all()
+
+
+@app.post("/shifts/assign", tags=["Shift Management"])
+def assign_shift(
+    employee_id: int = Query(..., gt=0),
+    shift_id: int = Query(..., gt=0),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    if user.role not in ("ADMIN", "HR"):
+        raise HTTPException(status_code=403, detail="HR or ADMIN access required")
+
+    employee = db.query(Employee).filter(Employee.id == employee_id).first()
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    shift = db.query(Shift).filter(Shift.id == shift_id).first()
+    if not shift:
+        raise HTTPException(status_code=404, detail="Shift not found")
+
+    assignment = db.query(EmployeeShift).filter(
+        EmployeeShift.employee_id == employee_id
+    ).first()
+
+    if assignment:
+        assignment.shift_id = shift_id
+    else:
+        assignment = EmployeeShift(
+            employee_id=employee_id,
+            shift_id=shift_id,
+        )
+        db.add(assignment)
+
+    db.commit()
+
+    return {
+        "message": "Shift assigned successfully",
+        "employee_id": employee_id,
+        "shift_id": shift_id,
+        "shift_name": shift.name,
+    }
+
+
+@app.get("/shifts/assignments", tags=["Shift Management"])
+def list_shift_assignments(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    if user.role not in ("ADMIN", "HR"):
+        raise HTTPException(status_code=403, detail="HR or ADMIN access required")
+
+    assignments = db.query(EmployeeShift, Employee, Shift).join(
+        Employee,
+        EmployeeShift.employee_id == Employee.id,
+    ).join(
+        Shift,
+        EmployeeShift.shift_id == Shift.id,
+    ).all()
+
+    return [
+        {
+            "employee_id": employee.id,
+            "employee_name": employee.full_name,
+            "shift_id": shift.id,
+            "shift_name": shift.name,
+            "start_time": shift.start_time,
+            "end_time": shift.end_time,
+        }
+        for assignment, employee, shift in assignments
+    ]
+@app.post("/performance-reviews")
+def create_performance_review(
+    employee_id: int,
+    review_period: str,
+    rating: float,
+    goals: str = "",
+    achievements: str = "",
+    feedback: str = "",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("HR", "ADMIN")),
+):
+    if rating < 1 or rating > 5:
+        raise HTTPException(
+            status_code=400,
+            detail="Rating must be between 1 and 5",
+        )
+
+    employee = db.query(Employee).filter(
+        Employee.id == employee_id
+    ).first()
+
+    if employee is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Employee not found",
+        )
+
+    review = PerformanceReview(
+        employee_id=employee_id,
+        reviewer_id=current_user.id,
+        review_period=review_period,
+        rating=rating,
+        goals=goals,
+        achievements=achievements,
+        feedback=feedback,
+    )
+
+    db.add(review)
+    db.commit()
+    db.refresh(review)
+
+    return {
+        "message": "Performance review created successfully",
+        "id": review.id,
+        "employee_id": review.employee_id,
+        "review_period": review.review_period,
+        "rating": review.rating,
+    }
+
+
+@app.get("/performance-reviews")
+def list_performance_reviews(
+    employee_id: int | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    query = db.query(PerformanceReview)
+
+    if current_user.role not in ("HR", "ADMIN"):
+        employee = get_my_employee(db, current_user)
+        query = query.filter(
+            PerformanceReview.employee_id == employee.id
+        )
+    elif employee_id is not None:
+        query = query.filter(
+            PerformanceReview.employee_id == employee_id
+        )
+
+    reviews = query.order_by(
+        PerformanceReview.created_at.desc()
+    ).all()
+
+    return [
+        {
+            "id": review.id,
+            "employee_id": review.employee_id,
+            "reviewer_id": review.reviewer_id,
+            "review_period": review.review_period,
+            "rating": review.rating,
+            "goals": review.goals,
+            "achievements": review.achievements,
+            "feedback": review.feedback,
+            "created_at": review.created_at,
+        }
+        for review in reviews
+    ]
+
+
+@app.patch("/performance-reviews/{review_id}")
+def update_performance_review(
+    review_id: int,
+    rating: float | None = None,
+    goals: str | None = None,
+    achievements: str | None = None,
+    feedback: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("HR", "ADMIN")),
+):
+    review = db.query(PerformanceReview).filter(
+        PerformanceReview.id == review_id
+    ).first()
+
+    if review is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Performance review not found",
+        )
+
+    if rating is not None:
+        if rating < 1 or rating > 5:
+            raise HTTPException(
+                status_code=400,
+                detail="Rating must be between 1 and 5",
+            )
+        review.rating = rating
+
+    if goals is not None:
+        review.goals = goals
+
+    if achievements is not None:
+        review.achievements = achievements
+
+    if feedback is not None:
+        review.feedback = feedback
+
+    db.commit()
+    db.refresh(review)
+
+    return {
+        "message": "Performance review updated successfully",
+        "id": review.id,
+        "rating": review.rating,
+    }
